@@ -1,0 +1,128 @@
+local enabled = false
+local textButton
+
+local function executeScript()
+    getgenv().G = true
+    getgenv().Creator = 'https://discord.gg/B3HqPPzFYr - HalloweenGaster'
+    
+    sethiddenproperty(game.Players.LocalPlayer, "SimulationRadius", 112412400000)
+    sethiddenproperty(game.Players.LocalPlayer, "MaxSimulationRadius", 112412400000)
+    
+    for _, d in pairs(game.Workspace:GetDescendants()) do
+        if d.ClassName == 'Humanoid' and not game.Players:GetPlayerFromCharacter(d.Parent) then
+            d.Health = 0
+        end
+    end
+end
+
+local function checkForNearbyNPCs()
+    local player = game.Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local rootPart = character:WaitForChild("HumanoidRootPart")
+
+    for _, npc in pairs(game.Workspace:GetDescendants()) do
+        if npc:IsA("Model") and npc:FindFirstChild("Humanoid") and npc ~= character then
+            local npcRootPart = npc:FindFirstChild("HumanoidRootPart")
+            if npcRootPart then
+                local distance = (npcRootPart.Position - rootPart.Position).Magnitude
+                if distance <= 25 then
+                    executeScript()
+                    break
+                end
+            end
+        end
+    end
+end
+
+local function createToggleButton()
+    local ScreenGui = Instance.new("ScreenGui")
+    local TextButton = Instance.new("TextButton")
+    local UIScale = Instance.new("UIScale")
+    local UIStroke = Instance.new("UIStroke")
+
+    ScreenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+    TextButton.Parent = ScreenGui
+    TextButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    TextButton.Position = UDim2.new(0, 10, 0.5, -20)
+    TextButton.Size = UDim2.new(0, 100, 0, 40)  -- Smaller size for the button
+    TextButton.Font = Enum.Font.SourceSans
+    TextButton.Text = "NPC Check OFF"
+    TextButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+    TextButton.TextSize = 18
+    TextButton.TextStrokeTransparency = 0  -- Ensure text stroke is visible
+
+    UIScale.Parent = TextButton
+    UIScale.Scale = 1  -- Default scale, can be adjusted if needed
+
+    UIStroke.Parent = TextButton
+    UIStroke.Thickness = 2  -- Border thickness
+    UIStroke.Color = Color3.fromRGB(0, 0, 0)  -- Border color
+    UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border  -- Apply stroke to the border
+
+    textButton = TextButton  -- Save a reference to the button for later
+
+    TextButton.MouseButton1Click:Connect(function()
+        enabled = not enabled
+        TextButton.Text = enabled and "NPC Check ON" or "NPC Check OFF"
+    end)
+
+    -- Make the TextButton draggable
+    local dragging = false
+    local dragInput, dragStart, startPos
+
+    local function updateDrag(input)
+        local delta = input.Position - dragStart
+        TextButton.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+
+    TextButton.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = TextButton.Position
+
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+
+    TextButton.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            if dragging then
+                updateDrag(input)
+            end
+        end
+    end)
+end
+
+local function startChecking()
+    while true do
+        if enabled then
+            checkForNearbyNPCs()
+        end
+        wait(0.5)  -- Delay for 0.5 second
+    end
+end
+
+local function onPlayerCharacterAdded()
+    -- Remove the old button if it exists
+    if textButton and textButton.Parent then
+        textButton.Parent:Destroy()
+    end
+
+    -- Create the toggle button again
+    createToggleButton()
+end
+
+-- Create the toggle button initially
+createToggleButton()
+
+-- Start the check loop with a delay
+spawn(startChecking)
+
+-- Recreate the toggle button when the player respawns
+game.Players.LocalPlayer.CharacterAdded:Connect(onPlayerCharacterAdded)
